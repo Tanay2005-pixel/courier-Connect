@@ -1,6 +1,5 @@
 from pymongo import MongoClient
-import re
-from collections import deque
+
 
 client = MongoClient("mongodb://localhost:27017/")
 db = client["CourierSystem"]
@@ -8,123 +7,130 @@ db = client["CourierSystem"]
 agents_collection = db["aggents"]
 agencies_collection = db["agencies"]
 
+
 class Node:
     def __init__(self, data):
         self.data = data
         self.next = None
 
-class LinkedList:
+class LL:
     def __init__(self):
         self.head = None
 
     def append(self, data):
-        new_node = Node(data)
+        new = Node(data)
         if not self.head:
-            self.head = new_node
+            self.head = new
         else:
-            curr = self.head
-            while curr.next:
-                curr = curr.next
-            curr.next = new_node
+            new.next = self.head
+            self.head = new
 
-    def search(self, username):
+    def search(self, val):
+        curr = self.head
+        while curr:
+            if curr.data == val:
+                return curr.data
+            curr = curr.next
+        return None
+    
+    def search_usernameAndPass(self, username = None, password = None):
         curr = self.head
         while curr:
             if curr.data["username"] == username:
                 return curr.data
             curr = curr.next
+        
+        curr = self.head
+        while curr:
+            if curr.data["password"] == password:
+                return curr.data
+            curr = curr.next
+        
         return None
+    
 
-class Stack:
-    def __init__(self):
-        self.stack = []
-    def push(self, item): self.stack.append(item)
-    def pop(self): return self.stack.pop() if self.stack else None
 
-active_agents = deque()
+    def printlist(self):
+        if not self.head:
+            print("no data")
+            return
+        else:
+            curr = self.head
+            while curr:
+                print(curr.data)
+                curr = curr.next    
 
-def validate_password(password):
-    if len(password) < 8: return False
-    if not re.search(r'[A-Z]', password): return False
-    if not re.search(r'[a-z]', password): return False
-    if not re.search(r'[0-9]', password): return False
-    return True
+all_aggencies = agencies_collection.find({}, {"agency": 1, "_id": 0})   
+all_username = agents_collection.find({}, {"username": 1,"password": 1, "_id": 0})
+def sign_up():
+    agencies = LL()
+    for names in all_aggencies:
+        agencies.append(names)
+    
+    usernames = LL()
+    for names in all_username:
+        usernames.append(names)
+    
+    agent_agency = input("Enter the agency name: ")
+    agent_id = int(input("Enter the Id: "))
+    agent_username = input("enter the user name: ")
+    agent_password = input("Enter the password: ")
 
-def agency_exists(name):
-    return agencies_collection.find_one({"agency": name}) is not None
+    if(agencies.search({'agency':agent_agency}) == None) :
+        print("Your agency is not registed")
+        return False
 
-def agent_sign_up(agent_list):
-    agency = input("Enter your agency name: ")
-    if not agency_exists(agency):
-        print(" This agency is not registered in the database.")
-        return
-
-    agent_id = input("Enter your Agent ID: ")
-    username = input("Enter username: ")
-
-    existing = agents_collection.find_one({"username": username})
-    if existing:
-        print(" Username already taken!")
-        return
-
-    password = input("Enter password: ")
-    if not validate_password(password):
-        print(" Password must contain at least:\n- One uppercase\n- One lowercase\n- One number\n- Minimum 8 characters")
-        return
+    if(" " in agent_username): 
+        print("username can't have spaces")
+        return False
+    if(usernames.search_usernameAndPass(agent_username) != None):
+        print("username already taken ")
+        return  False
 
     data = {
-        "agency": agency,
+        "agency": agent_agency,
         "agent_id": agent_id,
-        "username": username,
-        "password": password
+        "username": agent_username,
+        "password": agent_password
     }
 
     agents_collection.insert_one(data)
-    agent_list.append(data)
-    print(f" Agent {username} from {agency} registered successfully!")
+    return True
 
-def agent_sign_in(agent_list, login_stack):
-    username = input("Enter username: ")
-    password = input("Enter password: ")
 
-    agent = agents_collection.find_one({"username": username})
-    login_stack.push(username)
+def sign_in():
+    agencies = LL()
+    for names in all_aggencies:
+        agencies.append(names)
+    
+    usernames = LL()
+    for names in all_username:
+        usernames.append(names)
+    
+    username = input("Enter the username: ")
+    password = input("Enter the password: ")
 
-    if not agent:
-        print(" No such agent found!")
-        return
+    if(usernames.search_usernameAndPass(username) == None):
+        print("Invalid user name")
+        return False
+    
+    if(usernames.search_usernameAndPass(username, password) == None):
+        print("Wrong password")
+        return False
+    
+    print(f"Welcome {username}")
+    return True
+    
 
-    if not agency_exists(agent["agency"]):
-        print(" This agent’s agency no longer exists in database!")
-        return
-
-    if agent["password"] != password:
-        print(" Incorrect password!")
-        return
-
-    print(f" Welcome, {username} from {agent['agency']}!")
-    active_agents.append(username)
 
 def main():
-    print("\n=== Delivery Agent Portal ===")
-    print("1. Sign Up\n2. Sign In")
-    opt = input("Enter choice: ")
-
-    agent_list = LinkedList()
-    login_stack = Stack()
-
-    for a in agents_collection.find():
-        agent_list.append(a)
-
-    if opt == "1":
-        agent_sign_up(agent_list)
-    elif opt == "2":
-        agent_sign_in(agent_list, login_stack)
-    else:
-        print("Invalid option!")
-
-    print("\nActive agents:", list(active_agents))
-    print("Recent logins:", login_stack.stack)
-
-if __name__ == "__main__":
-    main()
+    print("Welcome Agent")
+    print("1. Create new Account\n2.Login")
+    choice = int(input("Enter the choice: "))
+    flag  = False
+    while flag != True: 
+        if choice == 1:
+            flag = sign_up()
+        else: 
+            flag = sign_in()
+    return

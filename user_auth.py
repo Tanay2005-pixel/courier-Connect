@@ -1,116 +1,140 @@
 from pymongo import MongoClient
 import re
-from collections import deque
+
+
 
 client = MongoClient("mongodb://localhost:27017/")
 db = client["CourierSystem"]
 users_collection = db["Users"]
+
 
 class Node:
     def __init__(self, data):
         self.data = data
         self.next = None
 
-class LinkedList:
+class LL:
     def __init__(self):
         self.head = None
 
     def append(self, data):
-        new_node = Node(data)
+        new = Node(data)
         if not self.head:
-            self.head = new_node
+            self.head = new
         else:
-            curr = self.head
-            while curr.next:
-                curr = curr.next
-            curr.next = new_node
+            new.next = self.head
+            self.head = new
 
-    def search(self, username):
+    def search(self, val):
         curr = self.head
         while curr:
-            if curr.data["username"] == username:
+            if curr.data["username"] == val:
+                return curr.data
+            curr = curr.next
+        return None
+    
+    def search_usernameAndPass(self, username, password):
+        curr = self.head
+        while curr:
+            if curr.data["username"] == username and curr.data["password"] == password:
                 return curr.data
             curr = curr.next
         return None
 
-
-class Stack:
-    def __init__(self):
-        self.stack = []
-
-    def push(self, item):
-        self.stack.append(item)
-
-    def pop(self):
-        if self.stack:
-            return self.stack.pop()
-
-    def top(self):
-        return self.stack[-1] if self.stack else None
+    def printlist(self):
+        if not self.head:
+            print("no data")
+            return
+        else:
+            curr = self.head
+            while curr:
+                print(curr.data)
+                curr = curr.next   
 
 
-active_users = deque()
+all_users = users_collection.find({}, {"_id": 0})
 
-def validate_password(password):
-    if len(password) < 8:
+def sign_up():
+    users = LL()
+    for names in all_users:
+        users.append(names)
+    
+    user_name = input("enter the user name: ")
+    user_password = input("Enter the password: ")
+
+    if " " in user_name:
+        print("User name cant have space")
+        return  False
+    
+    if users.search(user_name) != None: 
+        print( "User name Already Taken")
         return False
-    if not re.search(r'[A-Z]', password):
+    
+    if len(user_password) < 8:
+        print( "Password should have more than 8 character")
+        return  False
+    
+    if not re.search(r'[A-Z]', user_password):
+        print( "Password must contain Capital Character")
         return False
-    if not re.search(r'[a-z]', password):
+     
+    if not re.search(r'[a-z]', user_password):
+        print( "Password must contain Lower case character")
         return False
-    if not re.search(r'[0-9]', password):
+    if not re.search(r'[0-9]', user_password):
+        print( "Password must contain Digits")
         return False
+    
+    confirm = input("Enter the password again: ")
+    if user_password != confirm:
+        print( "Wrong Password")
+     
+    
+
+    data = {
+        "username": user_name,
+        "password": user_password
+    }
+
+    users_collection.insert_one(data)
     return True
 
-def sign_up(linked_users):
-    username = input("Enter username: ")
-    existing = users_collection.find_one({"username": username})
-    if existing:
-        print("Username already taken!")
-        return
+def sign_in():
+    users = LL()
+    for names in all_users:
+        users.append(names)
 
-    password = input("Enter password: ")
-    if not validate_password(password):
-        print("Password must contain at least:\n- One uppercase\n- One lowercase\n- One digit\n- Minimum 8 characters")
-        return
+    username = input("Enter the username: ")
+    password = input("Enter the password: ")
 
-    user_data = {"username": username, "password": password, "role": "customer"}
-    users_collection.insert_one(user_data)
-    linked_users.append(user_data)
-    print("Sign-up successful!")
+    user_exists = False
+    curr = users.head
+    while curr:
+        if curr.data["username"] == username:
+            user_exists = True
+            break
+        curr = curr.next
 
-def sign_in(linked_users, login_stack):
-    username = input("Enter username: ")
-    password = input("Enter password: ")
+    if not user_exists:
+        print("invalid username")
+        return False
 
-    user = users_collection.find_one({"username": username})
-    login_stack.push(username)
+    if users.search_usernameAndPass(username, password) is None:
+        print("Wrong password")
+        return False
 
-    if not user:
-        print("User not found!")
-        return
-    if user["password"] != password:
-        print("Incorrect password!")
-        return
+    print(f"Welcome {username}")
+    return True
 
-    print(f" Welcome back, {username}!")
-    active_users.append(username)
 
 def main():
-    linked_users = LinkedList()
-    login_stack = Stack()
-
-    for u in users_collection.find():
-        linked_users.append(u)
-
-    print("\n1. Sign Up\n2. Sign In")
-    opt = input("Enter choice: ")
-    if opt == "1":
-        sign_up(linked_users)
-    elif opt == "2":
-        sign_in(linked_users, login_stack)
-    else:
-        print("Invalid option!")
-
-if __name__ == "__main__":
-    main()
+    print("Welcome user")
+    print("1. Create new Account\n2.Login")
+    choice = int(input("Enter the choice: "))
+    flag = False
+    while flag != True: 
+        if choice == 1:
+            flag = sign_up()
+        else: 
+            flag = sign_in()
+    return
