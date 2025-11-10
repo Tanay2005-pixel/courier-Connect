@@ -72,6 +72,3 @@ def sign_in():
             print("Wrong username or password")
         else:
             print(f"Welcome {username}")
-
-
-sign_up()
