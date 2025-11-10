@@ -1,5 +1,3 @@
-import re
-
 def sign_up():
     username = input("enter the user name: ")
     file = open("user_auth.txt", "r")
@@ -7,8 +5,7 @@ def sign_up():
     if hash == 0: hash = 10
     for i in range(0,hash):
         line = file.readline()
-    
-    
+
     if username in line:
         print("Username is already taken")
         return
