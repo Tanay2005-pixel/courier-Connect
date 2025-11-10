@@ -1,140 +1,65 @@
-from pymongo import MongoClient
 import re
 
-
-
-client = MongoClient("mongodb://localhost:27017/")
-db = client["CourierSystem"]
-users_collection = db["Users"]
-
-
-class Node:
-    def __init__(self, data):
-        self.data = data
-        self.next = None
-
-class LL:
-    def __init__(self):
-        self.head = None
-
-    def append(self, data):
-        new = Node(data)
-        if not self.head:
-            self.head = new
-        else:
-            new.next = self.head
-            self.head = new
-
-    def search(self, val):
-        curr = self.head
-        while curr:
-            if curr.data["username"] == val:
-                return curr.data
-            curr = curr.next
-        return None
-    
-    def search_usernameAndPass(self, username, password):
-        curr = self.head
-        while curr:
-            if curr.data["username"] == username and curr.data["password"] == password:
-                return curr.data
-            curr = curr.next
-        return None
-
-    def printlist(self):
-        if not self.head:
-            print("no data")
-            return
-        else:
-            curr = self.head
-            while curr:
-                print(curr.data)
-                curr = curr.next   
-
-
-all_users = users_collection.find({}, {"_id": 0})
-
 def sign_up():
-    users = LL()
-    for names in all_users:
-        users.append(names)
+    username = input("enter the user name: ")
+    file = open("user_auth.txt", "r")
+    hash = len(username)%10
+    if hash == 0: hash = 10
+    for i in range(0,hash):
+        line = file.readline()
     
-    user_name = input("enter the user name: ")
-    user_password = input("Enter the password: ")
+    
+    if username in line:
+        print("Username is already taken")
+        return
 
-    if " " in user_name:
-        print("User name cant have space")
-        return  False
+    if " " in username:
+        print("Username cant have spaces")
+        return
     
-    if users.search(user_name) != None: 
-        print( "User name Already Taken")
-        return False
+    file.close()
     
-    if len(user_password) < 8:
-        print( "Password should have more than 8 character")
-        return  False
+    password = input("Enter the password: ")
+    upper = False
+    lower = False
+    number = False
+    for i in password:
+        if len(password) < 8:
+            print("More than 8 character")
+            return
+        if (ord(i)>=ord('A') and ord(i)<=ord('Z')):
+            upper = True
+        if (ord(i)>=ord('a') and ord(i)<=ord('z')):
+            lower = True
+        if i.isnumeric():
+            number = True
     
-    if not re.search(r'[A-Z]', user_password):
-        print( "Password must contain Capital Character")
-        return False
-     
-    if not re.search(r'[a-z]', user_password):
-        print( "Password must contain Lower case character")
-        return False
-    if not re.search(r'[0-9]', user_password):
-        print( "Password must contain Digits")
-        return False
-    
-    confirm = input("Enter the password again: ")
-    if user_password != confirm:
-        print( "Wrong Password")
-     
-    
+    if upper == False or lower == False or number == False:
+        print("Invalid password")
+        return
 
-    data = {
-        "username": user_name,
-        "password": user_password
-    }
+    with open("user_auth.txt", "r") as file:
+        line = file.readlines()
+        line[hash-2] = line[hash-2] + " " + username+" - "+password
 
-    users_collection.insert_one(data)
-    return True
+
+    with open("user_auth.txt", "w") as f:
+        f.writelines(line)
+    
+    print("successfully username and password safed")
 
 def sign_in():
-    users = LL()
-    for names in all_users:
-        users.append(names)
-
     username = input("Enter the username: ")
     password = input("Enter the password: ")
+    hash = len(username) %10
+    if(hash == 0): hash = 10
 
-    user_exists = False
-    curr = users.head
-    while curr:
-        if curr.data["username"] == username:
-            user_exists = True
-            break
-        curr = curr.next
-
-    if not user_exists:
-        print("invalid username")
-        return False
-
-    if users.search_usernameAndPass(username, password) is None:
-        print("Wrong password")
-        return False
-
-    print(f"Welcome {username}")
-    return True
-
-
-def main():
-    print("Welcome user")
-    print("1. Create new Account\n2.Login")
-    choice = int(input("Enter the choice: "))
-    flag = False
-    while flag != True: 
-        if choice == 1:
-            flag = sign_up()
-        else: 
-            flag = sign_in()
-    return
+    with open("user_auth.txt", "r") as f:
+        for i in range(0,hash):
+            line = f.readline()
+        
+        new = username+" - "+password
+        if new not in line:
+            print("Wrong username or password")
+        else:
+            print(f"Welcome {username}")
